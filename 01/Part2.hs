@@ -16,5 +16,5 @@ solve =
         . filter (not . null) -- Remove the empty lines
         )
     -- Then, for each group
-    . groupBy (const (not . null)) -- Group consecutive numbers when a newline is encountered
+    . groupBy (const (not . null)) -- Group consecutive numbers when an empty line is encountered
     . lines -- Split the input into a list of strings by newline characters

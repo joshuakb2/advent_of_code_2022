@@ -1,6 +1,3 @@
-import qualified Data.Set as Set
-import Data.Char
-
 main = do
     input <- readFile "input"
     let part1 = solvePart1 input

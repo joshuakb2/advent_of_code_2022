@@ -14,8 +14,7 @@ solvePart2 = solveWith overlaps
 solveWith condition =
     show
     . length
-    . filter id
-    . map (\(a, b) ->
+    . filter (\(a, b) ->
         condition a b || condition b a
     )
     . map parseLine

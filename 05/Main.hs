@@ -14,7 +14,10 @@ main = do
     putStrLn $ "Part 1: " ++ part1
     putStrLn $ "Part 2: " ++ part2
 
-solvePart1 input = answer
+solvePart1 = solveWith moveOneCrateAtATime
+solvePart2 = solveWith moveAllCratesAtOnce
+
+solveWith doSteps input = answer
     where
         answer = map head (elems finalStacks)
         finalStacks = doSteps steps initialStacks
@@ -22,22 +25,20 @@ solvePart1 input = answer
         steps = parseSteps stepLines
         (initialLines, stepLines) = splitOn "" (lines input)
 
-solvePart2 = const "Not implemented"
+-- Crates being moved need to be reversed in-transit
+moveOneCrateAtATime = performSteps reverse
 
-doSteps steps stacks = foldl doStep stacks steps
+-- Crates are all moved together, no adjustments needed
+moveAllCratesAtOnce = performSteps id
+
+performSteps adjustMoving steps stacks = foldl doStep stacks steps
     where
         doStep stacks Step { count, from, to } =
             let fromStack = stacks ! from
                 toStack = stacks ! to
-                (newFrom, newTo) = iterate move (fromStack, toStack) !! count
+                (moving, newFrom) = splitAt count fromStack
+                newTo = (adjustMoving moving) ++ toStack
             in stacks // [(from, newFrom), (to, newTo)]
-        move (from, to) =
-            let (x, newFrom) = unsafeUncons from
-                newTo = x : to
-            in (newFrom, newTo)
-
-unsafeUncons (x:xs) = (x, xs)
-unsafeUncons _ = error "Stack is empty!"
 
 parseStacks = toArray . map catMaybes . transpose . map parseCrates
 

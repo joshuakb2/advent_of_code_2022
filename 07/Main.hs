@@ -3,7 +3,7 @@
 import Control.Monad (forM_)
 import Control.Monad.Trans.State.Lazy (get, put, execState)
 import Data.Char (isSpace)
-import Data.List (sortOn)
+import Data.List (sortOn, intercalate)
 import qualified Data.Map.Strict as Map
 import Data.Map.Strict (Map)
 import Data.Maybe (catMaybes, listToMaybe, maybe)
@@ -30,7 +30,8 @@ solvePart1 =
     . inferTree
 
 solvePart2 =
-    fst
+    show
+    . snd
     . head
     . sortOn snd
     . bigEnoughDirs
@@ -132,5 +133,21 @@ notSpaces = many1 (satisfy (not . isSpace) <?> "non-space character")
 
 data Cmd = Cd String | Ls [DirEntry] deriving (Eq, Show)
 data DirEntry = FileEntry String Int | DirEntry String deriving (Eq, Show)
-data DirTree = DirTree { fileSizeSum :: Int, childDirs :: Map String DirTree } deriving Show
+data DirTree = DirTree { fileSizeSum :: Int, childDirs :: Map String DirTree }
 data CmdState = CmdState { cwd :: [String], dirTree :: DirTree } deriving Show
+
+instance Show DirTree where
+    show DirTree { childDirs } =
+        intercalate "\n" . filter (not . null) $ printTree <$> Map.toList childDirs
+        where
+            printTree (name, tree) =
+                intercalate "\n" . filter (not . null) $
+                    [ concat
+                        [ "└─ "
+                        , name
+                        , " ("
+                        , show (fileSizeSum tree)
+                        , ")"
+                        ]
+                    , unlines . map ("│  " ++) . lines . show $ tree
+                    ]

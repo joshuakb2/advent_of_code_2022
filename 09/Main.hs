@@ -6,39 +6,40 @@ main = do
     putStrLn $ "Part 1: " ++ solvePart1 input
     putStrLn $ "Part 2: " ++ solvePart2 input
 
-solvePart1 =
+solvePart1 = solveWithLength 1
+solvePart2 = solveWithLength 9
+
+solveWithLength length =
     show
     . Set.size
     . Set.fromList
-    . tailPathFromHeadPath
+    . (\headPath -> iterate nextKnotPath headPath !! length)
     . headPathFromSteps
     . stepsFromInput
-
-solvePart2 = const "Not implemented"
 
 headPathFromSteps =
     scanl takeStep (0, 0)
 
-tailPathFromHeadPath =
-    scanl followHead (0, 0)
+nextKnotPath =
+    tail . scanl followKnot (0, 0)
 
-followHead tail head = newTail
+followKnot currentKnotPos aheadKnotNewPos = newKnotPos
     where
-        diff@(diffX, diffY) = both2 (-) head tail
+        diff@(diffX, diffY) = both2 (-) aheadKnotNewPos currentKnotPos
         (magX, magY) = both abs diff
         stepX = if diffX > 0 then right else left
         stepY = if diffY > 0 then down else up
-        newTail
+        newKnotPos
             -- Diagonal
             | (magX + magY) > 2 && (magX * magY /= 0) =
                 takeStep stepX
                 . takeStep stepY
-                $ tail
+                $ currentKnotPos
             -- Non-diagonal
-            | magX > 1 = takeStep stepX tail
-            | magY > 1 = takeStep stepY tail
+            | magX > 1 = takeStep stepX currentKnotPos
+            | magY > 1 = takeStep stepY currentKnotPos
             -- Stay put
-            | otherwise = tail
+            | otherwise = currentKnotPos
 
 stepsFromInput input = do
     directionChar:_:countStr <- lines input

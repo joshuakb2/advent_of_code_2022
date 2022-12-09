@@ -1,4 +1,3 @@
-import Data.Char (isDigit)
 import qualified Data.Set as Set
 
 main = do
@@ -13,19 +12,20 @@ solveWithLength length =
     show
     . Set.size
     . Set.fromList
+    . map unPosition
     . (\headPath -> iterate nextKnotPath headPath !! length)
     . headPathFromSteps
     . stepsFromInput
 
 headPathFromSteps =
-    scanl takeStep (0, 0)
+    scanl (flip takeStep) (Position (0, 0))
 
 nextKnotPath =
-    tail . scanl followKnot (0, 0)
+    tail . scanl followKnot (Position (0, 0))
 
-followKnot currentKnotPos aheadKnotNewPos = newKnotPos
+followKnot currentKnotPos@(Position currentKnot) (Position newAheadKnot) = newKnotPos
     where
-        diff@(diffX, diffY) = both2 (-) aheadKnotNewPos currentKnotPos
+        diff@(diffX, diffY) = both2 (-) newAheadKnot currentKnot
         (magX, magY) = both abs diff
         stepX = if diffX > 0 then right else left
         stepY = if diffY > 0 then down else up
@@ -51,12 +51,18 @@ stepsFromInput input = do
             'R' -> right
     replicate count direction
 
-up = (0, -1)
-down = (0, 1)
-left = (-1, 0)
-right = (1, 0)
+up = Step (0, -1)
+down = Step (0, 1)
+left = Step (-1, 0)
+right = Step (1, 0)
 
-takeStep = both2 (+)
+takeStep (Step step) (Position pos) = Position (both2 (+) step pos)
 
 both f (a, b) = (f a, f b)
 both2 f (a1, a2) (b1, b2) = (f a1 b1, f a2 b2)
+
+newtype Step = Step (Int, Int)
+newtype Position = Position (Int, Int)
+
+unStep (Step x) = x
+unPosition (Position x) = x

@@ -12,8 +12,8 @@ solveWithLength length =
     show
     . Set.size
     . Set.fromList
-    . map unPosition
-    . (\headPath -> iterate nextKnotPath headPath !! length)
+    . (!! length)
+    . iterate nextKnotPath
     . headPathFromSteps
     . stepsFromInput
 
@@ -31,7 +31,7 @@ followKnot currentKnotPos@(Position currentKnot) (Position newAheadKnot) = newKn
         stepY = if diffY > 0 then down else up
         newKnotPos
             -- Diagonal
-            | (magX + magY) > 2 && (magX * magY /= 0) =
+            | (magX + magY) > 2 =
                 takeStep stepX
                 . takeStep stepY
                 $ currentKnotPos
@@ -62,7 +62,4 @@ both f (a, b) = (f a, f b)
 both2 f (a1, a2) (b1, b2) = (f a1 b1, f a2 b2)
 
 newtype Step = Step (Int, Int)
-newtype Position = Position (Int, Int)
-
-unStep (Step x) = x
-unPosition (Position x) = x
+newtype Position = Position (Int, Int) deriving (Eq, Ord)

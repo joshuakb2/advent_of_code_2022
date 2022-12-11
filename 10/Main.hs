@@ -13,23 +13,31 @@ main = do
 solvePart1 =
     show
     . sum
-    . map fst
-    -- . zip [20, 60..220]
-    . takeIndices [19, 59..219]
-    -- ("\n" ++)
-    -- . intercalate "\n"
-    -- . map show
-    -- . take 300
-    -- . zip [0..]
-    . mapFirst signalStrengths
+    . takeIndices [ i - 1 | i <- [20, 60..220] ]
+    . signalStrengths
     . cycles
     . parseInput
 
-mapFirst f xs =
-    let (as, bs) = unzip xs
-    in zip (f as) bs
+solvePart2 =
+    ('\n' :)
+    . intercalate "\n"
+    . rows
+    . cycles
+    . parseInput
 
-solvePart2 = const "Not implemented"
+rows =
+    take 6 . chunksOf 40 . zipWith pixel [0..]
+    where
+        pixel i h =
+            if isLit (i `mod` 40) h
+            then '#'
+            else ' '
+        isLit i h =
+            i >= (h - 1) && i <= (h + 1)
+
+chunksOf n xs =
+    let (chunk, rest) = splitAt n xs
+    in chunk : chunksOf n rest
 
 takeIndices :: [Int] -> [a] -> [a]
 takeIndices [] _ = []
@@ -44,20 +52,20 @@ signalStrengths =
     map (\(i, n) -> i * n)
     . zip [1..]
 
-cycles :: [Instruction] -> [(Int, String)]
-cycles instructions = lastForever $ scanl doEffect (1, "Initial state") effects
+cycles instructions =
+    repeatLast $ scanl doEffect 1 effects
     where
-        doEffect (n, _) (f, s) = (f n, s)
+        doEffect n f = f n
         effects = do
             instruction <- instructions
             let (duration, effect) = case instruction of
                     Noop -> (1, id)
                     Addx n -> (2, (+ n))
 
-            replicate (duration - 1) (id, "Processing " ++ show instruction) ++ [(effect, "Completed " ++ show instruction)]
+            replicate (duration - 1) id ++ [effect]
 
-lastForever (a:[]) = repeat a
-lastForever (a:rest) = a : lastForever rest
+repeatLast (a:[]) = repeat a
+repeatLast (a:rest) = a : repeatLast rest
 
 parseInput :: String -> [Instruction]
 parseInput input =

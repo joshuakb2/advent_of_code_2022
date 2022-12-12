@@ -5,7 +5,7 @@ import Text.Parsec (Parsec, parse, (<|>), newline, many, spaces, sepBy, char, sp
 import Text.ParserCombinators.Parsec.Numeric (int)
 import Text.Parsec.Char (string)
 import qualified Data.Map.Strict as Map
-import Control.Monad.Trans.State (execState, modify, get)
+import Control.Monad.Trans.State.Strict (execState, modify, get)
 import Control.Monad (forM_, replicateM_)
 import Data.List (sortOn)
 import Data.Ord (Down(..))
@@ -15,66 +15,68 @@ main = do
     putStrLn $ "Part 1: " ++ solvePart1 input
     putStrLn $ "Part 2: " ++ solvePart2 input
 
-solvePart1 =
+solvePart1 = solveWith 20 True
+solvePart2 = solveWith 1000 False
+
+solveWith !rounds !worryDecreases =
     show
     . monkeyBusiness
-    . simulateRounds 20
+    . simulateRounds rounds worryDecreases
     . monkeyMap
     . parseInput
-
-solvePart2 = const "Not implemented"
 
 monkeyBusiness =
     product . take 2 . sortOn Down . map monkey_tally . Map.elems
 
-simulateRounds rounds monkeyMap =
-    flip execState monkeyMap $
-        replicateM_ rounds simulateRound
+simulateRounds !rounds !worryDecreases !monkeyMap =
+    flip execState monkeyMap $!
+        replicateM_ rounds (simulateRound worryDecreases)
 
-simulateRound = do
+simulateRound !worryDecreases = do
     monkeyIDs <- getMonkeyIDsFromState
-    forM_ monkeyIDs takeTurn
+    forM_ monkeyIDs (takeTurn worryDecreases)
 
-takeTurn monkeyID = do
+takeTurn !worryDecreases !monkeyID = do
     monkey <- (Map.! monkeyID) <$> get
-    forM_ (monkey_items monkey) (handleItem monkey)
+    forM_ (monkey_items monkey) (handleItem worryDecreases monkey)
     finishTurn monkey
 
-handleItem monkey item = do
+handleItem !worryDecreases !monkey !item = do
     let consideredItem = monkey_op monkey item
-    let finalItem = finishConsideringItem consideredItem
+    let finalItem = finishConsideringItem worryDecreases consideredItem
     let receivingMonkeyID = monkey_throw_to monkey finalItem
     finalItem `throwTo` receivingMonkeyID
 
-finishTurn monkey =
-    modify $ \monkeys ->
-        let setNewMonkeyValue = const $ monkey
+finishTurn !monkey =
+    modify $ \ !monkeys ->
+        let setNewMonkeyValue = const $! monkey
                 { monkey_items = []
-                , monkey_tally = monkey_tally monkey + length (monkey_items monkey)
+                , monkey_tally = monkey_tally monkey + fromIntegral (length (monkey_items monkey))
                 }
         in Map.adjust setNewMonkeyValue (monkey_id monkey) monkeys
 
-item `throwTo` monkeyID =
-    modify $ \monkeys -> Map.adjust f monkeyID monkeys
+!item `throwTo` !monkeyID =
+    modify $ \ !monkeys -> Map.adjust f monkeyID monkeys
     where
-        f monkey =
+        f !monkey =
             monkey { monkey_items = monkey_items monkey ++ [item] }
 
-finishConsideringItem (Item worry) = Item (worry `div` 3)
+finishConsideringItem True (Item !worry) = Item (worry `div` 3)
+finishConsideringItem False !item = item
 
 getMonkeyIDsFromState = do
     monkeys <- get
-    return (Map.keys monkeys)
+    return $! Map.keys monkeys
 
 monkeyMap =
     Map.fromList . map toPair
     where
-        toPair monkey = (monkey_id monkey, monkey)
+        toPair !monkey = (monkey_id monkey, monkey)
 
-parseInput input =
+parseInput !input =
     case parse (monkeyParser `sepBy` spaces) "input" input of
         Left err -> error (show err)
-        Right x -> x
+        Right !x -> x
 
 monkeyParser :: Parsec String () Monkey
 monkeyParser = do
@@ -88,13 +90,13 @@ monkeyParser = do
     spaces
     throwTo <- throwToParser
     newline
-    return (Monkey (MonkeyID id) items op throwTo 0)
+    return $! Monkey (MonkeyID id) items op throwTo 0
 
 itemsParser :: Parsec String () [Item]
 itemsParser = do
     string "Starting items: "
     ns <- int `sepBy` string ", "
-    return (Item <$> ns)
+    return $! Item <$> ns
 
 opParser :: Parsec String () (Item -> Item)
 opParser = do
@@ -109,7 +111,7 @@ opParser = do
             string "old"
             return (if opChar == '+' then (* 2) else (^ 2))
         ]
-    return (Item . op . unItem)
+    return $! Item . op . unItem
 
 throwToParser :: Parsec String () (Item -> MonkeyID)
 throwToParser = do
@@ -121,17 +123,17 @@ throwToParser = do
     spaces
     string "If false: throw to monkey "
     falseMonkey <- int
-    return $ \(Item worry) ->
+    return $ \(Item !worry) ->
         if worry `mod` n == 0
         then MonkeyID trueMonkey
         else MonkeyID falseMonkey
 
 data Monkey = Monkey
-    { monkey_id :: MonkeyID
-    , monkey_items :: [Item]
-    , monkey_op :: Item -> Item
-    , monkey_throw_to :: Item -> MonkeyID
-    , monkey_tally :: Int
+    { monkey_id :: !MonkeyID
+    , monkey_items :: ![Item]
+    , monkey_op :: !(Item -> Item)
+    , monkey_throw_to :: !(Item -> MonkeyID)
+    , monkey_tally :: !Integer
     }
 
 instance Show Monkey where
@@ -142,8 +144,8 @@ instance Show Monkey where
         , show . map unItem $ monkey_items monkey
         ]
 
-newtype MonkeyID = MonkeyID Int deriving (Eq, Ord, Show)
-newtype Item = Item Int deriving Show
+newtype MonkeyID = MonkeyID Integer deriving (Eq, Ord, Show)
+newtype Item = Item Integer deriving Show
 
-unMonkeyID (MonkeyID id) = id
-unItem (Item worry) = worry
+unMonkeyID (MonkeyID !id) = id
+unItem (Item !worry) = worry
